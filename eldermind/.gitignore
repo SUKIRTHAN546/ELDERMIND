@@ -1,0 +1,43 @@
+# ── SECRETS ──────────────────────────────────────────────────────
+.env
+*.env
+
+# ── PYTHON ───────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# ── CHROMADB ─────────────────────────────────────────────────────
+# Each developer keeps their own local database — never commit it
+backend/chroma_db/
+chroma_db/
+
+# ── ML MODEL BINARIES ────────────────────────────────────────────
+# Too large for Git — store on Google Drive and share the seed script
+backend/ml_models/scam_classifier/model/*.pkl
+backend/ml_models/scam_classifier/model/*.joblib
+backend/ml_models/scam_classifier/model/*.bin
+
+# ── AUDIO TEST FILES ─────────────────────────────────────────────
+*.wav
+*.webm
+*.mp3
+
+# ── NODE / REACT ─────────────────────────────────────────────────
+node_modules/
+frontend/build/
+frontend/.env.local
+
+# ── OS ───────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE ──────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
