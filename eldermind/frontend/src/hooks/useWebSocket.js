@@ -1,48 +1,45 @@
-/**
- * ElderMind — useWebSocket Hook
- * Owner: Shivani
- *
- * Keeps the FamilyDashboard live without manual refresh.
- * Auto-reconnects every 3 seconds if the connection drops.
- *
- * Usage:
- *   const { lastMessage, connected } = useWebSocket('ws://localhost:8000/ws/family');
- */
+import { useEffect, useRef, useState } from 'react';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8000/ws/family';
 
-export default function useWebSocket(url) {
-  const [lastMessage, setLastMessage] = useState(null);
-  const [connected,   setConnected]   = useState(false);
-  const wsRef                         = useRef(null);
-  const reconnectTimer                = useRef(null);
-
-  const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
-
-    const ws      = new WebSocket(url);
-    wsRef.current = ws;
-
-    ws.onopen  = () => setConnected(true);
-    ws.onclose = () => {
-      setConnected(false);
-      // Auto-reconnect after 3 seconds
-      reconnectTimer.current = setTimeout(connect, 3000);
-    };
-    ws.onerror = () => ws.close();
-    ws.onmessage = e => {
-      try { setLastMessage(JSON.parse(e.data)); }
-      catch { setLastMessage(e.data); }
-    };
-  }, [url]);
+export default function useWebSocket() {
+  const [messages, setMessages] = useState([]);
+  const [connected, setConnected] = useState(false);
+  const ws = useRef(null);
 
   useEffect(() => {
     connect();
-    return () => {
-      clearTimeout(reconnectTimer.current);
-      wsRef.current?.close();
-    };
-  }, [connect]);
+    return () => ws.current?.close();
+  }, []);
 
-  return { lastMessage, connected };
+  const connect = () => {
+    try {
+      ws.current = new WebSocket(WS_URL);
+
+      ws.current.onopen = () => setConnected(true);
+
+      ws.current.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        setMessages(prev => [data, ...prev].slice(0, 20));
+      };
+
+      ws.current.onclose = () => {
+        setConnected(false);
+        setTimeout(connect, 5000);
+      };
+
+      ws.current.onerror = () => setConnected(false);
+
+    } catch {
+      setConnected(false);
+    }
+  };
+
+  const sendMessage = (data) => {
+    if (ws.current?.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify(data));
+    }
+  };
+
+  return { messages, connected, sendMessage };
 }

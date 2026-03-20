@@ -1,116 +1,74 @@
-/**
- * ElderMind — VoiceButton Component
- * Owner: Shivani
- *
- * The primary user interaction. Press-and-hold to record speech.
- * 4 clearly labelled states — elderly users always know what the system is doing.
- *
- * Size: 192x192px — NEVER reduce this for any reason.
- * States: idle → recording → processing → playing → idle
- */
+import React, { useState, useRef } from 'react';
+import axios from 'axios';
 
-import { useState, useRef } from 'react';
-import api from '../api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-const STATES = {
-  idle:       { bg: '#3B82F6', label: 'Tap and Hold to Speak', icon: '🎤', pulse: false },
-  recording:  { bg: '#EF4444', label: 'Listening...',           icon: '🔴', pulse: true  },
-  processing: { bg: '#F59E0B', label: 'Thinking...',            icon: '⏳', pulse: false },
-  playing:    { bg: '#22C55E', label: 'Speaking...',            icon: '🔊', pulse: false },
-};
-
-export default function VoiceButton({ userId }) {
-  const [state, setState]   = useState('idle');
-  const recorderRef         = useRef(null);
-  const chunksRef           = useRef([]);
-  const audioRef            = useRef(new Audio());
+export default function VoiceButton({ onTranscript }) {
+  const [state, setState] = useState('idle'); // idle, recording, processing, error
+  const mediaRecorder = useRef(null);
+  const chunks = useRef([]);
 
   const startRecording = async () => {
-    if (state !== 'idle') return;
     try {
-      const stream   = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
-      chunksRef.current = [];
-      recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      recorderRef.current = recorder;
-      recorder.start(100);
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder.current = new MediaRecorder(stream);
+      chunks.current = [];
+      mediaRecorder.current.ondataavailable = e => chunks.current.push(e.data);
+      mediaRecorder.current.onstop = handleStop;
+      mediaRecorder.current.start();
       setState('recording');
     } catch {
-      alert('Please allow microphone access and try again.');
+      setState('error');
     }
   };
 
-  const stopRecording = async () => {
-    if (state !== 'recording') return;
-    setState('processing');
+  const stopRecording = () => {
+    if (mediaRecorder.current) {
+      mediaRecorder.current.stop();
+      setState('processing');
+    }
+  };
 
-    const recorder = recorderRef.current;
-    recorder.stop();
-    recorder.stream.getTracks().forEach(t => t.stop());
-    await new Promise(res => { recorder.onstop = res; });
-
-    const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-    const form = new FormData();
-    form.append('audio', blob, 'voice.webm');
-
+  const handleStop = async () => {
+    const blob = new Blob(chunks.current, { type: 'audio/wav' });
+    const formData = new FormData();
+    formData.append('audio', blob, 'recording.wav');
     try {
-      const res = await api.post(
-        `/voice/process?user_id=${userId}`,
-        form,
-        { responseType: 'blob' }
-      );
-      const url = URL.createObjectURL(res.data);
-      audioRef.current.src = url;
-      setState('playing');
-      audioRef.current.play();
-      audioRef.current.onended = () => {
-        setState('idle');
-        URL.revokeObjectURL(url);
-      };
-    } catch {
+      const res = await axios.post(`${API_URL}/voice/transcribe`, formData);
+      if (onTranscript) onTranscript(res.data.transcript);
       setState('idle');
-      alert('Could not connect. Please try again in a moment.');
+    } catch {
+      setState('error');
     }
   };
 
-  const cfg      = STATES[state];
-  const disabled = state === 'processing' || state === 'playing';
+  const labels = {
+    idle: '🎤 Hold to Speak',
+    recording: '🔴 Recording... Release to Send',
+    processing: '⏳ Processing...',
+    error: '❌ Error — Try Again',
+  };
+
+  const colors = {
+    idle: 'bg-blue-600 hover:bg-blue-700',
+    recording: 'bg-red-500 animate-pulse',
+    processing: 'bg-yellow-500',
+    error: 'bg-gray-500',
+  };
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'24px', padding:'32px' }}>
+    <div className="flex justify-center my-6">
       <button
+        className={`w-48 h-48 rounded-full text-white text-xl font-bold ${colors[state]} transition-all`}
         onMouseDown={startRecording}
         onMouseUp={stopRecording}
-        onTouchStart={e => { e.preventDefault(); startRecording(); }}
-        onTouchEnd={e => { e.preventDefault(); stopRecording(); }}
-        disabled={disabled}
-        aria-label={cfg.label}
-        style={{
-          width:'192px', height:'192px', borderRadius:'50%',
-          backgroundColor: cfg.bg,
-          border:'none',
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          display:'flex', flexDirection:'column',
-          alignItems:'center', justifyContent:'center', gap:'8px',
-          boxShadow:'0 8px 24px rgba(0,0,0,0.2)',
-          animation: cfg.pulse ? 'pulse 1s infinite' : 'none',
-          transition:'transform 0.1s',
-          WebkitTapHighlightColor: 'transparent',
-        }}
+        onTouchStart={startRecording}
+        onTouchEnd={stopRecording}
+        disabled={state === 'processing'}
+        aria-label={labels[state]}
       >
-        <span style={{ fontSize:'52px' }}>{cfg.icon}</span>
+        {labels[state]}
       </button>
-
-      <p style={{ fontSize:'22px', fontWeight:'600', color:'#374151', textAlign:'center', margin:0 }}>
-        {cfg.label}
-      </p>
-
-      <style>{`
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); }
-          50%       { transform: scale(1.06); }
-        }
-      `}</style>
     </div>
   );
 }

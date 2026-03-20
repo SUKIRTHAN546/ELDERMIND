@@ -1,112 +1,82 @@
-/**
- * ElderMind — ChatWindow Component
- * Owner: Shivani
- *
- * Displays conversation as speech bubbles.
- * Also accepts text input for family members who prefer typing.
- *
- * Design rules:
- *   - 20px minimum font size everywhere
- *   - Auto-scrolls to latest message
- *   - Clear visual distinction between user and assistant bubbles
- */
+import React, { useState, useRef, useEffect } from 'react';
+import axios from 'axios';
 
-import { useState, useRef, useEffect } from 'react';
-import api from '../api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-export default function ChatWindow({ userId }) {
+export default function ChatWindow() {
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Vanakkam! I am ElderMind. How are you feeling today?' }
+    { role: 'assistant', content: 'Hello! I am ElderMind. How are you feeling today?' }
   ]);
-  const [input,   setInput]   = useState('');
+  const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const bottomRef             = useRef(null);
+  const bottomRef = useRef(null);
 
-  // Auto-scroll to latest message
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const send = async () => {
-    const text = input.trim();
-    if (!text || loading) return;
+  const sendMessage = async () => {
+    if (!input.trim() || loading) return;
+    const userMsg = { role: 'user', content: input };
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: text }]);
     setLoading(true);
     try {
-      const res = await api.post('/chat/', {
-        user_id:        userId,
-        message:        text,
-        memory_context: '',
+      const res = await axios.post(`${API_URL}/chat`, {
+        message: input,
+        user_id: 1
       });
-      setMessages(prev => [...prev, { role: 'assistant', content: res.data.reply }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: res.data.response }]);
     } catch {
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'I am having a little trouble. Please try again in a moment.',
-      }]);
-    } finally {
-      setLoading(false);
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I could not connect. Please try again.' }]);
     }
+    setLoading(false);
+  };
+
+  const handleKey = (e) => {
+    if (e.key === 'Enter') sendMessage();
   };
 
   return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', backgroundColor:'#F4F9FC' }}>
+    <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-6 mb-6">
+      <h2 className="text-2xl font-bold text-blue-800 mb-4">💬 Chat with ElderMind</h2>
 
-      {/* ── MESSAGES ─────────────────────────────────────────── */}
-      <div style={{
-        flex:1, overflowY:'auto', padding:'24px',
-        display:'flex', flexDirection:'column', gap:'16px',
-      }}>
-        {messages.map((m, i) => (
-          <div key={i} style={{ display:'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
-            <div style={{
-              maxWidth:'70%', padding:'16px 20px', borderRadius:'20px',
-              fontSize:'20px', lineHeight:'1.7',
-              backgroundColor: m.role === 'user' ? '#3B82F6' : '#FFFFFF',
-              color:           m.role === 'user' ? '#FFFFFF'  : '#1F2937',
-              boxShadow:'0 2px 8px rgba(0,0,0,0.1)',
-              borderBottomRightRadius: m.role === 'user' ? '4px'  : '20px',
-              borderBottomLeftRadius:  m.role === 'user' ? '20px' : '4px',
-            }}>
-              {m.content}
-            </div>
+      {/* Message Area */}
+      <div className="h-80 overflow-y-auto flex flex-col gap-4 mb-4 p-2">
+        {messages.map((msg, i) => (
+          <div
+            key={i}
+            className={`p-4 rounded-xl max-w-xs text-lg ${
+              msg.role === 'user'
+                ? 'bg-blue-100 self-end text-right'
+                : 'bg-gray-100 self-start'
+            }`}
+          >
+            {msg.content}
           </div>
         ))}
-
         {loading && (
-          <div style={{ display:'flex', justifyContent:'flex-start' }}>
-            <div style={{ padding:'16px 20px', borderRadius:'20px', backgroundColor:'#E5E7EB', fontSize:'20px' }}>
-              Thinking...
-            </div>
+          <div className="bg-gray-100 self-start p-4 rounded-xl text-lg text-gray-500">
+            ElderMind is typing...
           </div>
         )}
-
         <div ref={bottomRef} />
       </div>
 
-      {/* ── INPUT BAR ─────────────────────────────────────────── */}
-      <div style={{ padding:'16px 24px', borderTop:'1px solid #E5E7EB', display:'flex', gap:'12px' }}>
+      {/* Input Area */}
+      <div className="flex gap-4">
         <input
+          className="flex-1 border-2 border-gray-300 rounded-xl p-4 text-lg focus:outline-none focus:border-blue-500"
+          placeholder="Type your message..."
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && send()}
-          placeholder="Type a message..."
-          style={{
-            flex:1, padding:'14px 18px', fontSize:'20px',
-            borderRadius:'12px', border:'2px solid #D1D5DB', outline:'none',
-          }}
+          onKeyDown={handleKey}
+          disabled={loading}
         />
         <button
-          onClick={send}
+          className="bg-blue-600 text-white px-6 py-4 rounded-xl text-lg font-bold hover:bg-blue-700 disabled:opacity-50"
+          onClick={sendMessage}
           disabled={loading}
-          style={{
-            padding:'14px 28px', fontSize:'20px',
-            backgroundColor: loading ? '#9CA3AF' : '#3B82F6',
-            color:'#FFFFFF', border:'none', borderRadius:'12px',
-            cursor: loading ? 'not-allowed' : 'pointer', fontWeight:'600',
-            minWidth:'60px', minHeight:'60px',
-          }}
         >
           Send
         </button>
