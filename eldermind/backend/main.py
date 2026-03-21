@@ -77,7 +77,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"]        = "DENY"
         response.headers["X-XSS-Protection"]       = "1; mode=block"
         response.headers["Referrer-Policy"]        = "strict-origin-when-cross-origin"
-        response.headers.pop("server", None)
+        if "server" in response.headers:
+            del response.headers["server"]
         return response
 
 app.add_middleware(SecurityHeadersMiddleware)
@@ -130,13 +131,13 @@ async def notify_family(event_type: str, data: dict):
 from routers.auth import router as auth_router
 app.include_router(auth_router)
 
-# from routers.chat      import router as chat_router      # Tanisha — Week 3
+from routers.chat import router as chat_router
 # from routers.memory    import router as memory_router    # Suchit  — Week 2
 # from routers.voice     import router as voice_router     # Sukirthan — Week 3
 # from routers.reminders import router as reminders_router # Shivani — Week 3
 # from routers.security  import router as security_router  # Sudharsan — Week 4
 
-# app.include_router(chat_router)
+app.include_router(chat_router)
 # app.include_router(memory_router)
 # app.include_router(voice_router)
 # app.include_router(reminders_router)

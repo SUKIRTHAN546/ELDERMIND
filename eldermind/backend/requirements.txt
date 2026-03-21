@@ -20,7 +20,6 @@ passlib[bcrypt]==1.7.4
 slowapi==0.1.9
 
 # AI & ML
-openai==1.12.0
 chromadb==0.4.22          # PINNED — do NOT upgrade; 0.5+ breaks Suchit's filter syntax
 sentence-transformers==2.5.1
 scikit-learn==1.4.0

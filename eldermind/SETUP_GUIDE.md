@@ -74,7 +74,7 @@ uvicorn main:app --reload
 
 | Name | First task |
 |------|-----------|
-| **Tanisha** | Get GPT-4o-mini to respond to a test message via `/chat/` |
+| **Tanisha** | Get Sarvam chat model to respond to a test message via `/chat/` |
 | **Suchit** | Install ChromaDB 0.4.22, embed one sentence, verify the 384-dim vector |
 | **Sukirthan** | Activate Sarvam API key, transcribe a test WAV file with Saarika |
 | **Sujit P** | Create the GitHub repo, all 6 branches, protect `main` |

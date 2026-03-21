@@ -1,93 +1,150 @@
-"""
-ElderMind — Chat Router
+﻿"""
+ElderMind - Chat Router
 Owner: Tanisha (AI Engineer 1)
-
-Endpoints:
-  POST /chat/          — main conversation endpoint
-  GET  /chat/history/{user_id} — fetch conversation history (for Shivani's dashboard)
-  POST /chat/end-session       — end session, triggers memory extraction (calls Suchit)
-
-Tech: GPT-4o-mini, FastAPI, conversation history (last 10 messages), memory injection
 """
 
+import logging
+import uuid
+from datetime import datetime
+
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+
 from models.database import get_db
-from models.orm import User, Conversation
+from models.orm import Conversation, User
 from models.schemas import ChatRequest, ChatResponse
 from routers.auth import get_current_user
-import os, uuid, logging
+from services.gpt_service import FALLBACK_REPLY, chat_with_gpt, clear_history, stream_gpt_response
 
 logger = logging.getLogger("chat")
 router = APIRouter(prefix="/chat", tags=["chat"])
 
-# ─── ELDERMIND SYSTEM PROMPT ──────────────────────────────────────
-# TODO (Tanisha): Refine this in Week 1. Inject memory_context below.
-SYSTEM_PROMPT_TEMPLATE = """You are ElderMind, a warm and caring AI companion for elderly Indian users.
 
-Your persona:
-- Speak in a gentle, patient, and respectful tone — like a trusted family friend.
-- Address the user with affection (e.g. "Amma", "Thatha") when appropriate.
-- Keep sentences short and clear. Avoid technical jargon.
-- Show genuine curiosity about the user's life, health, and family.
-- For medication reminders, be firm but caring — never scolding.
-- Celebrate small moments (birthdays, anniversaries, achievements) with warmth.
-- If the user expresses loneliness or grief, respond with empathy first — advice second.
+async def _resolve_memory_context(user_id: str, message: str, memory_context: str) -> str:
+    context = (memory_context or "").strip()
+    if context:
+        return context
 
-Language: Respond in the same language the user uses (Tamil, Hindi, or English).
+    try:
+        async with httpx.AsyncClient() as hc:
+            resp = await hc.post(
+                "http://localhost:8000/memory/retrieve",
+                json={"user_id": user_id, "query": message, "n_results": 5},
+                timeout=2.0,
+            )
+        payload = resp.json()
+        facts = payload.get("facts", "")
+        if isinstance(facts, list):
+            return "\n".join(str(item) for item in facts)
+        if isinstance(facts, str):
+            return facts
+        return str(facts)
+    except Exception as exc:
+        logger.warning("Memory fetch failed for %s: %s", user_id, exc)
+        return ""
 
-{memory_context}
-"""
+
+def _store_turns(db: Session, user_id: str, session_id: str, user_msg: str, assistant_msg: str) -> None:
+    db.add(
+        Conversation(
+            user_id=user_id,
+            session_id=session_id,
+            role="user",
+            content=user_msg,
+        )
+    )
+    db.add(
+        Conversation(
+            user_id=user_id,
+            session_id=session_id,
+            role="assistant",
+            content=assistant_msg,
+        )
+    )
+    db.commit()
 
 
 @router.post("/", response_model=ChatResponse)
 async def chat(
-    req:          ChatRequest,
-    db:           Session = Depends(get_db),
-    # current_user: User    = Depends(get_current_user),   # Uncomment after Week 4 JWT gate
+    req: ChatRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """
-    Main conversation endpoint.
-    1. Assembles system prompt with memory context from Suchit's /memory/retrieve
-    2. Appends last 10 messages of conversation history
-    3. Calls GPT-4o-mini
-    4. Stores both turns in PostgreSQL
-    5. Returns reply
+    user_id = current_user.id
+    if req.user_id and req.user_id != user_id:
+        raise HTTPException(status_code=403, detail="user_id does not match authenticated user")
 
-    TODO (Tanisha):
-      - Uncomment the openai import and client initialisation below
-      - Wire in the memory_context injection
-      - Enable JWT auth after Week 4 gate
-    """
-    # ── PLACEHOLDER — replace with real GPT call in Week 3 ────────
+    message = (req.message or "").strip()
+    if not message:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    if len(message) > 1000:
+        message = message[:1000]
+
     session_id = req.session_id or f"session_{uuid.uuid4().hex[:8]}"
+    memory_context = await _resolve_memory_context(user_id, message, req.memory_context)
 
-    # Hardcoded stub for Week 2 — gives teammates something to call immediately
-    reply = (
-        "Vanakkam! I am ElderMind, your caring companion. "
-        "I am still being set up — check back soon! 😊"
-    )
+    reply = await chat_with_gpt(user_id=user_id, message=message, memory_context=memory_context)
+    _store_turns(db, user_id, session_id, message, reply)
 
-    # ── STORE BOTH TURNS IN DB ────────────────────────────────────
-    for role, content in [("user", req.message), ("assistant", reply)]:
-        db.add(Conversation(
-            user_id=req.user_id,
-            session_id=session_id,
-            role=role,
-            content=content,
-        ))
-    db.commit()
-
-    logger.info(f"[chat] user={req.user_id} session={session_id} msg_len={len(req.message)}")
+    logger.info("[chat] user=%s session=%s msg_len=%s", user_id, session_id, len(message))
     return ChatResponse(reply=reply, session_id=session_id)
 
 
+@router.get("/stream")
+async def chat_stream(
+    message: str,
+    session_id: str | None = None,
+    memory_context: str = "",
+    user_id: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    effective_user_id = current_user.id
+    if user_id and user_id != effective_user_id:
+        raise HTTPException(status_code=403, detail="user_id does not match authenticated user")
+
+    msg = (message or "").strip()
+    if not msg:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    if len(msg) > 1000:
+        msg = msg[:1000]
+
+    sid = session_id or f"session_{uuid.uuid4().hex[:8]}"
+
+    async def generate():
+        resolved_context = await _resolve_memory_context(effective_user_id, msg, memory_context)
+        full_reply = ""
+        try:
+            async for token in stream_gpt_response(effective_user_id, msg, resolved_context):
+                full_reply += token
+                yield f"data: {token}\n\n"
+            yield "data: [DONE]\n\n"
+        finally:
+            assistant_msg = full_reply.strip() or FALLBACK_REPLY
+            try:
+                _store_turns(db, effective_user_id, sid, msg, assistant_msg)
+            except Exception as exc:
+                logger.exception("Failed to store streamed conversation: %s", exc)
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
 @router.get("/history/{user_id}")
-def get_history(user_id: str, limit: int = 20, db: Session = Depends(get_db)):
-    """
-    Returns last N conversation turns for a user.
-    Called by Shivani's FamilyDashboard.
-    """
+def get_history(
+    user_id: str,
+    limit: int = 20,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not allowed to access other users' history")
+
     rows = (
         db.query(Conversation)
         .filter(Conversation.user_id == user_id)
@@ -105,14 +162,48 @@ def get_history(user_id: str, limit: int = 20, db: Session = Depends(get_db)):
 
 
 @router.post("/end-session")
-async def end_session(user_id: str, session_id: str, db: Session = Depends(get_db)):
-    """
-    Called at end of conversation session.
-    Retrieves the full transcript, calls Suchit's /memory/extract,
-    and notifies Shivani's WebSocket dashboard.
+async def end_session(
+    session_id: str,
+    user_id: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    effective_user_id = current_user.id
+    if user_id and user_id != effective_user_id:
+        raise HTTPException(status_code=403, detail="user_id does not match authenticated user")
 
-    TODO (Tanisha):
-      - Call POST /memory/extract with the session transcript
-      - Call notify_family("new_conversation", {...}) from main.py
-    """
-    return {"ended": True, "user_id": user_id, "session_id": session_id}
+    rows = (
+        db.query(Conversation)
+        .filter(
+            Conversation.user_id == effective_user_id,
+            Conversation.session_id == session_id,
+        )
+        .order_by(Conversation.created_at)
+        .all()
+    )
+    transcript = "\n".join(f"{r.role}: {r.content}" for r in rows)
+
+    try:
+        async with httpx.AsyncClient() as hc:
+            await hc.post(
+                "http://localhost:8000/memory/extract",
+                params={"user_id": effective_user_id, "conversation": transcript},
+                timeout=5.0,
+            )
+    except Exception as exc:
+        logger.warning("memory/extract failed for %s: %s", effective_user_id, exc)
+
+    from main import notify_family
+
+    last = rows[-1].content[:100] if rows else ""
+    await notify_family(
+        "new_conversation",
+        {
+            "role": "assistant",
+            "content": last,
+            "created_at": str(datetime.now()),
+        },
+    )
+
+    clear_history(effective_user_id)
+    return {"ended": True, "turns": len(rows), "session_id": session_id}

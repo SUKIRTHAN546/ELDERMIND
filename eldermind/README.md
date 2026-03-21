@@ -14,7 +14,7 @@ through a real-time dashboard and SMS reminders.
 
 | Role | Name | Focus |
 |------|------|-------|
-| AI Engineer 1 | **Tanisha** | Conversational AI — GPT-4o-mini, Persona, `/chat` endpoint |
+| AI Engineer 1 | **Tanisha** | Conversational AI — Sarvam chat model, Persona, `/chat` endpoint |
 | AI Engineer 2 | **Suchit** | Memory — ChromaDB, RAG, Embeddings, Fact Extraction |
 | AI Engineer 3 | **Sukirthan** | Voice Pipeline — Sarvam STT/TTS/Translation, Orchestration |
 | Backend Engineer 1 | **Sujit P** | API & Database — FastAPI, PostgreSQL, JWT, Routing |
@@ -73,7 +73,7 @@ python ml_models/seed_demo_user.py
 React Frontend (Shivani)
     │
     ├── POST /voice/process  ──▶ Sukirthan: STT → translate → RAG → GPT → translate → TTS
-    ├── POST /chat/          ──▶ Tanisha:   GPT-4o-mini + memory injection
+    ├── POST /chat/          ──▶ Tanisha:   Sarvam chat model + memory injection
     ├── GET  /memory/all     ──▶ Suchit:    ChromaDB retrieval
     ├── POST /reminders      ──▶ Shivani:   APScheduler + Twilio SMS
     ├── WS   /ws/family      ──▶ Shivani:   Real-time family dashboard
@@ -110,8 +110,9 @@ Copy `backend/.env.example` to `backend/.env` and fill in:
 |----------|-------|---------|
 | `DATABASE_URL` | Sujit P | PostgreSQL connection string |
 | `JWT_SECRET_KEY` | Sujit P | JWT signing key (generate randomly) |
-| `OPENAI_API_KEY` | Tanisha | GPT-4o-mini calls |
-| `SARVAM_API_KEY` | Sukirthan | STT + TTS + Translation |
+| `SARVAM_CHAT_API_KEY` | Tanisha | Sarvam chat model calls |
+| `SARVAM_VOICE_API_KEY` | Sukirthan | STT + TTS + Translation |
+| `SARVAM_API_KEY` | Team (optional fallback) | Shared Sarvam key for backward compatibility |
 | `TWILIO_ACCOUNT_SID` | Shivani | SMS sending |
 | `TWILIO_AUTH_TOKEN` | Shivani | SMS sending |
 | `TWILIO_FROM_NUMBER` | Shivani | Twilio sender number |
