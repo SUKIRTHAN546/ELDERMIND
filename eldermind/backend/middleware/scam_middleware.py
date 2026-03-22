@@ -20,7 +20,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from twilio.rest import Client
-import os, json, logging
+import os, json, logging, joblib
 
 logger = logging.getLogger("scam_middleware")
 
@@ -30,19 +30,29 @@ TWILIO_SID            = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_TOKEN          = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_FROM           = os.getenv("TWILIO_FROM_NUMBER")
 
-# ── TODO: Load trained model on module import ──────────────────────
-# import joblib
-# vectoriser = joblib.load("ml_models/scam_classifier/model/tfidf.joblib")
-# classifier = joblib.load("ml_models/scam_classifier/model/logreg.joblib")
+MODEL_DIR = os.path.join(
+    os.path.dirname(__file__),
+    "../ml_models/scam_classifier/model"
+)
+
+try:
+    vectoriser = joblib.load(os.path.join(MODEL_DIR, "tfidf.joblib"))
+    classifier = joblib.load(os.path.join(MODEL_DIR, "logreg.joblib"))
+    logger.info("Scam classifier loaded successfully.")
+except Exception as e:
+    vectoriser = None
+    classifier = None
+    logger.warning(f"Scam classifier not loaded: {e}")
 
 
 def _score_message(text: str) -> float:
-    """
-    Returns scam risk score in [0, 1].
-    TODO (Sudharsan): Replace with real classifier prediction.
-    """
-    # stub — always returns 0 until model is loaded
-    return 0.0
+    if vectoriser is None or classifier is None:
+        return 0.0
+
+    vec = vectoriser.transform([text])
+    prob = classifier.predict_proba(vec)[0]
+    return float(prob[1])
+
 
 
 def _fire_family_alert(message: str, risk_score: float):
