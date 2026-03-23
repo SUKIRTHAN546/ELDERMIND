@@ -76,6 +76,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"]        = "DENY"
         response.headers["X-XSS-Protection"]       = "1; mode=block"
+        response.headers["Referrer-Policy"]= "strict-origin-when-cross-origin"
+        
+        if "server" in response.headers:
+            del response.headers["server"]
+        
         response.headers["Referrer-Policy"]        = "strict-origin-when-cross-origin"
         if "server" in response.headers:
             del response.headers["server"]
@@ -128,8 +133,8 @@ async def notify_family(event_type: str, data: dict):
 # ─── ROUTERS ──────────────────────────────────────────────────────
 # Uncomment each as the team member completes and PRs their module.
 
-from routers.auth import router as auth_router
-app.include_router(auth_router)
+# from routers.auth import router as auth_router
+# app.include_router(auth_router)
 
 # from routers.chat      import router as chat_router      # Tanisha — Week 3
 from routers.memory    import router as memory_router    # Suchit  — Week 2
