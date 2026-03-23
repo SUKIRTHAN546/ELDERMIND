@@ -22,7 +22,13 @@ logger = logging.getLogger("memory_service")
 
 # ─── INITIALISE CHROMADB AND EMBEDDER ─────────────────────────────
 # PersistentClient saves to disk — memories survive server restarts
-chroma_client = chromadb.PersistentClient(path="./chroma_db")
+import os
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "../chroma_db")
+
+chroma_client = chromadb.PersistentClient(path=DB_PATH)
+
 
 # Load embedding model once at startup (~3 s on first load from disk cache)
 # NOTE: First ever run downloads ~90 MB — normal, one-time only.
@@ -31,7 +37,7 @@ embedder = SentenceTransformer("all-MiniLM-L6-v2")
 logger.info("Embedding model ready.")
 
 VALID_CATEGORIES     = ["family", "medical", "preferences", "routine", "life_memories", "events"]
-SIMILARITY_THRESHOLD = 0.65   # Minimum cosine similarity to include a result
+SIMILARITY_THRESHOLD = 0.30   # Minimum cosine similarity to include a result
 DEDUP_THRESHOLD      = 0.92   # If similarity >= 0.92, treat as duplicate — skip
 
 
@@ -74,8 +80,8 @@ def store_memory(
         results = collection.query(
             query_embeddings=[q_vec],
             n_results=min(3, collection.count()),
-            where={"user_id": user_id},
         )
+        print("DEDUP RESULTS:", results)
         if results["distances"] and results["distances"][0]:
             top_sim = 1 - results["distances"][0][0]
             if top_sim >= DEDUP_THRESHOLD:
@@ -122,16 +128,10 @@ def retrieve_memories(
         return ""
 
     q_vec = embed(query)
-    where = (
-        {"$and": [{"user_id": user_id}, {"category": category}]}
-        if category and category in VALID_CATEGORIES
-        else {"user_id": user_id}
-    )
 
     results = collection.query(
         query_embeddings = [q_vec],
         n_results        = min(n_results, collection.count()),
-        where            = where,
         include          = ["documents", "distances", "metadatas"],
     )
 
@@ -142,8 +142,11 @@ def retrieve_memories(
         results["metadatas"][0],
     ):
         similarity = 1 - dist
+        print("SIM:", similarity, "DOC:", doc)  # 🔥 debug line
+
         if similarity >= SIMILARITY_THRESHOLD:
-            facts.append(f'[{meta["category"]}] {doc}')
+                if category is None or meta["category"] == category:
+                    facts.append(f'[{meta["category"]}] {doc}')
 
     logger.info(f"[memory] retrieve user={user_id} query_len={len(query)} results={len(facts)}")
     return "\n".join(facts)
@@ -159,8 +162,8 @@ def get_all_memories(user_id: str, category: str = None) -> list:
     where  = {"$and": [{"user_id": user_id}, {"category": category}]} if category else {"user_id": user_id}
     result = collection.get(where=where, include=["documents", "metadatas"])
     return [
-        {"text": doc, "category": meta["category"], "timestamp": meta["timestamp"]}
-        for doc, meta in zip(result["documents"], result["metadatas"])
+        { "id": id, "text": doc, "category": meta["category"], "timestamp": meta["timestamp"]}
+        for id, doc, meta in zip(result["ids"], result["documents"], result["metadatas"])
     ]
 
 
@@ -191,3 +194,39 @@ def extract_and_store_facts(user_id: str, conversation_text: str) -> list:
                 stored_ids.append(r["id"])
 
     return stored_ids
+
+# ─── AUTO-EXTRACT AND STORE FACTS ─────────────────────────────────
+
+def delete_memory(user_id: str, mem_id: str) -> dict:
+    collection = get_collection(user_id)
+
+    try:
+        collection.delete(ids=[mem_id])
+        return {"deleted": True, "id": mem_id}
+    except Exception as e:
+        return {"deleted": False, "error": str(e)}
+    
+
+def get_memory_stats(user_id: str) -> dict:
+    collection = get_collection(user_id)
+    
+    if collection.count() == 0:
+        return {
+            "user_id": user_id,
+            "total": 0,
+            "by_category": {cat: 0 for cat in VALID_CATEGORIES}
+        }
+
+    result = collection.get(where={"user_id": user_id}, include=["metadatas"])
+    counts = {cat: 0 for cat in VALID_CATEGORIES}
+
+    for meta in result["metadatas"]:
+        category = meta["category"]
+        if category in counts:
+            counts[category] += 1
+
+    return {
+        "user_id": user_id,
+        "total": collection.count(),
+        "by_category": counts
+    }
