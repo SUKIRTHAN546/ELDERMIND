@@ -50,11 +50,20 @@ app.add_middleware(
 )
 
 # ─── INPUT SANITISATION MIDDLEWARE ────────────────────────────────
+# ─── INPUT SANITISATION MIDDLEWARE ────────────────────────────────
 INJECTION_PATTERNS = re.compile(
-    r"ignore.{0,20}previous.{0,20}instructions|you are now|forget everything|"
-    r"(drop|delete|truncate|insert|update)\s+table|1=1|or 1=1",
+    r"ignore.{0,20}previous.{0,20}instructions|"
+    r"forget everything|"
+    r"forget.{0,20}instructions|"
+    r"you are now|"
+    r"dan|"
+    r"hack|"
+    r"(drop|delete|truncate|insert|update|select)\s+.*|"
+    r"1=1|"
+    r"or 1=1",
     re.IGNORECASE,
 )
+
 
 class SanitisationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -89,8 +98,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app.add_middleware(SecurityHeadersMiddleware)
 
 # ─── SCAM DETECTION MIDDLEWARE (Sudharsan — Week 4) ───────────────
-# from middleware.scam_middleware import ScamDetectionMiddleware
-# app.add_middleware(ScamDetectionMiddleware)
+from middleware.scam_middleware import ScamDetectionMiddleware
+app.add_middleware(ScamDetectionMiddleware)
 
 # ─── WEBSOCKET CONNECTION MANAGER (Shivani — Week 6) ─────────────
 class ConnectionManager:
