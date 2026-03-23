@@ -81,6 +81,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if "server" in response.headers:
             del response.headers["server"]
         
+        response.headers["Referrer-Policy"]        = "strict-origin-when-cross-origin"
+        if "server" in response.headers:
+            del response.headers["server"]
         return response
 
 app.add_middleware(SecurityHeadersMiddleware)
