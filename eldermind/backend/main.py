@@ -152,7 +152,7 @@ from routers.voice     import router as voice_router     # Sukirthan — Week 3
 from routers.memory    import router as memory_router    # Suchit  — Week 2
 # from routers.voice     import router as voice_router     # Sukirthan — Week 3
 # from routers.reminders import router as reminders_router # Shivani — Week 3
-# from routers.security  import router as security_router  # Sudharsan — Week 4
+from routers.security  import router as security_router  # Sudharsan — Week 4
 
 app.include_router(chat_router)
 # app.include_router(memory_router)
@@ -161,7 +161,7 @@ app.include_router(voice_router)
 app.include_router(memory_router)
 # app.include_router(voice_router)
 # app.include_router(reminders_router)
-# app.include_router(security_router)
+app.include_router(security_router)
 
 # ─── SCHEDULER (Shivani — Week 3) ────────────────────────────────
 # from services.scheduler_service import start_scheduler
