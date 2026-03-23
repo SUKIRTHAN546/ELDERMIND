@@ -1,0 +1,35 @@
+INFO:     Started server process [15356]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:63039 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63040 - "POST /auth/register HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63041 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://api.sarvam.ai/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:gpt_service:[gpt] user=user_fc6fa98c msg_len=41 reply_len=266 latency_ms=2537 provider=sarvam
+INFO:chat:[chat] user=user_fc6fa98c session=session_a99b1bf1 msg_len=41
+INFO:     127.0.0.1:63042 - "POST /chat/ HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://api.sarvam.ai/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:gpt_service:[gpt] user=user_fc6fa98c msg_len=31 reply_len=166 latency_ms=2239 provider=sarvam
+INFO:chat:[chat] user=user_fc6fa98c session=session_1fcafcd4 msg_len=31
+INFO:     127.0.0.1:63044 - "POST /chat/ HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://api.sarvam.ai/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:gpt_service:[gpt] user=user_fc6fa98c msg_len=46 reply_len=202 latency_ms=1871 provider=sarvam
+INFO:chat:[chat] user=user_fc6fa98c session=session_5bc6e4f7 msg_len=46
+INFO:     127.0.0.1:63046 - "POST /chat/ HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://api.sarvam.ai/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:gpt_service:[gpt] user=user_fc6fa98c msg_len=24 reply_len=198 latency_ms=1828 provider=sarvam
+INFO:chat:[chat] user=user_fc6fa98c session=session_aeea72b0 msg_len=24
+INFO:     127.0.0.1:63047 - "POST /chat/ HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://api.sarvam.ai/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:gpt_service:[gpt] user=user_fc6fa98c msg_len=40 reply_len=163 latency_ms=1518 provider=sarvam
+INFO:chat:[chat] user=user_fc6fa98c session=session_6944e6df msg_len=40
+INFO:     127.0.0.1:63048 - "POST /chat/ HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://api.sarvam.ai/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:gpt_service:[gpt] user=user_fc6fa98c msg_len=44 reply_len=190 latency_ms=1571 provider=sarvam
+INFO:chat:[chat] user=user_fc6fa98c session=session_00c57e59 msg_len=44
+INFO:     127.0.0.1:63052 - "POST /chat/ HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://api.sarvam.ai/v1/chat/completions "HTTP/1.1 200 OK"
+INFO:gpt_service:[gpt] user=user_fc6fa98c msg_len=35 reply_len=159 latency_ms=1825 provider=sarvam
+INFO:chat:[chat] user=user_fc6fa98c session=session_fc4de988 msg_len=35
+INFO:     127.0.0.1:63053 - "POST /chat/ HTTP/1.1" 200 OK
