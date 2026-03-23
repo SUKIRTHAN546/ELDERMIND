@@ -11,7 +11,7 @@
 ### Checklist
 
 - [ ] **Sujit P** — JWT auth live. Unauthenticated request to `/chat/` returns 401. Authenticated request returns 200.
-- [ ] **Tanisha** — `/chat/` calls GPT-4o-mini with the full ElderMind system prompt. Conversation history (last 10 messages) injected.
+- [ ] **Tanisha** — `/chat/` calls Sarvam chat model with the full ElderMind system prompt. Conversation history (last 10 messages) injected.
 - [ ] **Suchit** — `/memory/retrieve` returns relevant facts for `demo_elderly_user`. All 30 seed memories loaded. Memory persists across server restart.
 - [ ] **Sukirthan** — Full terminal voice pipeline: Tamil audio → Saarika STT → Mayura translate → `/memory/retrieve` → `/chat/` → GPT response in terminal.
 - [ ] **Shivani** — CORS working from React. VoiceButton connected to `/voice/process`. Twilio SMS fires at scheduled time from DB.

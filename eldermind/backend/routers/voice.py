@@ -7,7 +7,7 @@ Endpoint:
 
 Full pipeline:
   Sarvam Saarika v2.5 STT  →  Mayura translate (ta→en)  →
-  /memory/retrieve          →  GPT-4o-mini via /chat/     →
+  /memory/retrieve          →  Sarvam chat model via /chat/     →
   Mayura translate (en→ta)  →  Bulbul v3 TTS             →
   WAV bytes returned to React VoiceButton
 
