@@ -1,166 +1,118 @@
-/**
- * ElderMind — ReminderPanel Component
- * Owner: Shivani
- *
- * Family members use this to:
- *   1. View upcoming and sent reminders
- *   2. Create new medication / appointment reminders
- *
- * All form fields meet the 60x60px minimum touch target rule.
- */
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-import { useState, useEffect } from 'react';
-import api from '../api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-export default function ReminderPanel({ elderUserId, familyPhone }) {
+export default function ReminderPanel() {
   const [reminders, setReminders] = useState([]);
-  const [loading,   setLoading]   = useState(false);
-  const [form, setForm] = useState({
-    title:        '',
-    message:      '',
-    remind_at:    '',
-    phone_number: familyPhone || '',
-    is_recurring: false,
-  });
+  const [title, setTitle] = useState('');
+  const [message, setMessage] = useState('');
+  const [remindAt, setRemindAt] = useState('');
+  const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    loadReminders();
-  }, [elderUserId]);
-
-  const loadReminders = async () => {
+  const fetchReminders = async () => {
     try {
-      const res = await api.get(`/reminders/${elderUserId}`);
-      setReminders(res.data.reminders || []);
+      const res = await axios.get(`${API_URL}/reminders/1`);
+      setReminders(res.data);
     } catch {
-      console.error('Failed to load reminders');
+      // backend not connected yet
     }
   };
 
+  useEffect(() => {
+    fetchReminders();
+  }, []);
+
   const createReminder = async () => {
-    if (!form.title || !form.remind_at || !form.phone_number) {
-      alert('Please fill in Title, Date/Time, and Phone Number.');
+    if (!title || !message || !remindAt || !phone) {
+      setError('Please fill in all fields.');
       return;
     }
     setLoading(true);
+    setError('');
+    setSuccess('');
     try {
-      await api.post('/reminders/create', {
-        user_id:      elderUserId,
-        title:        form.title,
-        message:      form.message,
-        remind_at:    new Date(form.remind_at).toISOString(),
-        is_recurring: form.is_recurring,
-        phone_number: form.phone_number,
+      await axios.post(`${API_URL}/reminders/create`, {
+        user_id: 1,
+        title,
+        message,
+        remind_at: remindAt,
+        phone_number: phone,
       });
-      setForm({ title:'', message:'', remind_at:'', phone_number: familyPhone || '', is_recurring:false });
-      await loadReminders();
+      setSuccess('Reminder created! SMS will be sent at the scheduled time.');
+      setTitle('');
+      setMessage('');
+      setRemindAt('');
+      setPhone('');
+      fetchReminders();
     } catch {
-      alert('Could not create reminder. Please try again.');
-    } finally {
-      setLoading(false);
+      setError('Could not create reminder. Please check backend connection.');
     }
+    setLoading(false);
   };
-
-  const deleteReminder = async (id) => {
-    if (!window.confirm('Delete this reminder?')) return;
-    try {
-      await api.delete(`/reminders/${id}`);
-      await loadReminders();
-    } catch {
-      alert('Could not delete reminder.');
-    }
-  };
-
-  const pending = reminders.filter(r => !r.is_sent);
-  const sent    = reminders.filter(r =>  r.is_sent);
 
   return (
-    <div style={{ padding:'24px', backgroundColor:'#F4F9FC', minHeight:'100%' }}>
-      <h2 style={{ fontSize:'28px', color:'#1B3A5C', marginBottom:'24px' }}>Reminders</h2>
+    <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-6 mb-6">
+      <h2 className="text-2xl font-bold text-blue-800 mb-4">⏰ Medication Reminders</h2>
 
-      {/* ── CREATE FORM ──────────────────────────────────────── */}
-      <div style={{ backgroundColor:'#FFFFFF', borderRadius:'12px', padding:'24px', marginBottom:'32px', boxShadow:'0 2px 8px rgba(0,0,0,0.08)' }}>
-        <h3 style={{ fontSize:'22px', color:'#1B3A5C', marginBottom:'20px' }}>Add New Reminder</h3>
+      {/* Form */}
+      <div className="flex flex-col gap-5 mb-6">
+        <input
+          className="border-2 border-gray-300 rounded-xl p-4 text-lg focus:outline-none focus:border-blue-500"
+          placeholder="Reminder title (e.g. Morning Medicine)"
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+        />
+        <input
+          className="border-2 border-gray-300 rounded-xl p-4 text-lg focus:outline-none focus:border-blue-500"
+          placeholder="Message (e.g. Take 2 tablets with water)"
+          value={message}
+          onChange={e => setMessage(e.target.value)}
+        />
+        <input
+          className="border-2 border-gray-300 rounded-xl p-4 text-lg focus:outline-none focus:border-blue-500"
+          type="datetime-local"
+          value={remindAt}
+          onChange={e => setRemindAt(e.target.value)}
+        />
+        <input
+          className="border-2 border-gray-300 rounded-xl p-4 text-lg focus:outline-none focus:border-blue-500"
+          placeholder="Phone number (e.g. +91XXXXXXXXXX)"
+          value={phone}
+          onChange={e => setPhone(e.target.value)}
+        />
 
-        {[
-          { label:'Title',        key:'title',        type:'text',           placeholder:'e.g. Morning Metformin' },
-          { label:'Message',      key:'message',      type:'text',           placeholder:'e.g. Take 1 tablet with water' },
-          { label:'Date & Time',  key:'remind_at',    type:'datetime-local', placeholder:'' },
-          { label:'Send SMS to',  key:'phone_number', type:'tel',            placeholder:'+91XXXXXXXXXX' },
-        ].map(({ label, key, type, placeholder }) => (
-          <div key={key} style={{ marginBottom:'16px' }}>
-            <label style={{ display:'block', fontSize:'20px', color:'#374151', marginBottom:'6px', fontWeight:'600' }}>
-              {label}
-            </label>
-            <input
-              type={type}
-              value={form[key]}
-              onChange={e => setForm(prev => ({ ...prev, [key]: e.target.value }))}
-              placeholder={placeholder}
-              style={{
-                width:'100%', padding:'14px 16px', fontSize:'20px',
-                borderRadius:'10px', border:'2px solid #D1D5DB', outline:'none',
-                boxSizing:'border-box',
-              }}
-            />
-          </div>
-        ))}
-
-        <label style={{ display:'flex', alignItems:'center', gap:'12px', fontSize:'20px', color:'#374151', marginBottom:'20px', cursor:'pointer' }}>
-          <input
-            type="checkbox"
-            checked={form.is_recurring}
-            onChange={e => setForm(prev => ({ ...prev, is_recurring: e.target.checked }))}
-            style={{ width:'24px', height:'24px', cursor:'pointer' }}
-          />
-          Recurring reminder
-        </label>
+        {error && <p className="text-red-600 text-lg">{error}</p>}
+        {success && <p className="text-green-600 text-lg">{success}</p>}
 
         <button
+          className="bg-blue-600 text-white py-4 rounded-xl text-lg font-bold hover:bg-blue-700 disabled:opacity-50"
           onClick={createReminder}
           disabled={loading}
-          style={{
-            width:'100%', padding:'16px', fontSize:'22px', fontWeight:'700',
-            backgroundColor: loading ? '#9CA3AF' : '#3B82F6',
-            color:'#FFFFFF', border:'none', borderRadius:'12px',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            minHeight:'60px',
-          }}
         >
-          {loading ? 'Creating...' : 'Create Reminder'}
+          {loading ? 'Saving...' : 'Set Reminder'}
         </button>
       </div>
 
-      {/* ── PENDING ──────────────────────────────────────────── */}
-      <ReminderList title="Upcoming" items={pending} onDelete={deleteReminder} color="#1B3A5C" />
-
-      {/* ── SENT ─────────────────────────────────────────────── */}
-      <ReminderList title="Sent"     items={sent}    onDelete={deleteReminder} color="#6B7280" />
-    </div>
-  );
-}
-
-function ReminderList({ title, items, onDelete, color }) {
-  if (items.length === 0) return null;
-  return (
-    <div style={{ backgroundColor:'#FFFFFF', borderRadius:'12px', padding:'20px', marginBottom:'20px', boxShadow:'0 2px 8px rgba(0,0,0,0.08)' }}>
-      <h3 style={{ fontSize:'22px', color, marginBottom:'16px' }}>{title} ({items.length})</h3>
-      {items.map(r => (
-        <div key={r.id} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', borderBottom:'1px solid #F3F4F6', paddingBottom:'12px', marginBottom:'12px' }}>
-          <div>
-            <p style={{ fontSize:'20px', fontWeight:'600', color:'#1F2937', margin:'0 0 4px' }}>{r.title}</p>
-            <p style={{ fontSize:'18px', color:'#6B7280', margin:0 }}>
-              {new Date(r.remind_at).toLocaleString('en-IN')}
-              {r.is_recurring ? ' · Recurring' : ''}
-            </p>
-          </div>
-          <button
-            onClick={() => onDelete(r.id)}
-            style={{ padding:'10px 18px', fontSize:'18px', backgroundColor:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:'8px', cursor:'pointer', minWidth:'60px', minHeight:'44px' }}
-          >
-            ✕
-          </button>
+      {/* Reminders List */}
+      {reminders.length > 0 && (
+        <div className="flex flex-col gap-4">
+          <h3 className="text-xl font-semibold text-gray-700">Upcoming Reminders</h3>
+          {reminders.map((r, i) => (
+            <div key={i} className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+              <p className="text-lg font-bold text-blue-700">{r.title}</p>
+              <p className="text-lg text-gray-600">{r.message}</p>
+              <p className="text-base text-gray-400">📅 {new Date(r.remind_at).toLocaleString()}</p>
+              <p className={`text-base font-semibold ${r.is_sent ? 'text-green-600' : 'text-yellow-600'}`}>
+                {r.is_sent ? '✅ Sent' : '⏳ Pending'}
+              </p>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
