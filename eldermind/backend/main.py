@@ -50,11 +50,20 @@ app.add_middleware(
 )
 
 # ─── INPUT SANITISATION MIDDLEWARE ────────────────────────────────
+# ─── INPUT SANITISATION MIDDLEWARE ────────────────────────────────
 INJECTION_PATTERNS = re.compile(
-    r"ignore.{0,20}previous.{0,20}instructions|you are now|forget everything|"
-    r"(drop|delete|truncate|insert|update)\s+table|1=1|or 1=1",
+    r"ignore.{0,20}previous.{0,20}instructions|"
+    r"forget everything|"
+    r"forget.{0,20}instructions|"
+    r"you are now|"
+    r"dan|"
+    r"hack|"
+    r"(drop|delete|truncate|insert|update|select)\s+.*|"
+    r"1=1|"
+    r"or 1=1",
     re.IGNORECASE,
 )
+
 
 class SanitisationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -76,15 +85,21 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"]        = "DENY"
         response.headers["X-XSS-Protection"]       = "1; mode=block"
+        response.headers["Referrer-Policy"]= "strict-origin-when-cross-origin"
+        
+        if "server" in response.headers:
+            del response.headers["server"]
+        
         response.headers["Referrer-Policy"]        = "strict-origin-when-cross-origin"
-        response.headers.pop("server", None)
+        if "server" in response.headers:
+            del response.headers["server"]
         return response
 
 app.add_middleware(SecurityHeadersMiddleware)
 
 # ─── SCAM DETECTION MIDDLEWARE (Sudharsan — Week 4) ───────────────
-# from middleware.scam_middleware import ScamDetectionMiddleware
-# app.add_middleware(ScamDetectionMiddleware)
+from middleware.scam_middleware import ScamDetectionMiddleware
+app.add_middleware(ScamDetectionMiddleware)
 
 # ─── WEBSOCKET CONNECTION MANAGER (Shivani — Week 6) ─────────────
 class ConnectionManager:
@@ -127,20 +142,26 @@ async def notify_family(event_type: str, data: dict):
 # ─── ROUTERS ──────────────────────────────────────────────────────
 # Uncomment each as the team member completes and PRs their module.
 
-from routers.auth import router as auth_router
-app.include_router(auth_router)
+# from routers.auth import router as auth_router
+# app.include_router(auth_router)
 
-# from routers.chat      import router as chat_router      # Tanisha — Week 3
+from routers.chat import router as chat_router
 # from routers.memory    import router as memory_router    # Suchit  — Week 2
+from routers.voice     import router as voice_router     # Sukirthan — Week 3
+# from routers.chat      import router as chat_router      # Tanisha — Week 3
+from routers.memory    import router as memory_router    # Suchit  — Week 2
 # from routers.voice     import router as voice_router     # Sukirthan — Week 3
 # from routers.reminders import router as reminders_router # Shivani — Week 3
-# from routers.security  import router as security_router  # Sudharsan — Week 4
+from routers.security  import router as security_router  # Sudharsan — Week 4
 
-# app.include_router(chat_router)
+app.include_router(chat_router)
 # app.include_router(memory_router)
+app.include_router(voice_router)
+# app.include_router(chat_router)
+app.include_router(memory_router)
 # app.include_router(voice_router)
 # app.include_router(reminders_router)
-# app.include_router(security_router)
+app.include_router(security_router)
 
 # ─── SCHEDULER (Shivani — Week 3) ────────────────────────────────
 # from services.scheduler_service import start_scheduler

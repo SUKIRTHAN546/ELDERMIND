@@ -1,0 +1,44 @@
+[
+  {
+    "scenario": "Loneliness",
+    "status_code": 200,
+    "ok": true,
+    "reply": "Oh, I’m so sorry you’re feeling this way today. Loneliness can be heavy, but I’m here with you. Did Karthik call you recently? Sometimes he gets busy with work, but he always cares about you. Would you like to share what’s on your mind? A cup of chai might help too."
+  },
+  {
+    "scenario": "Grief",
+    "status_code": 200,
+    "ok": true,
+    "reply": "Oh, my dear, missing your husband must be so difficult. His love and presence are irreplaceable. Would you like to talk about a happy memory you shared? Sometimes rem"
+  },
+  {
+    "scenario": "Health Worry",
+    "status_code": 200,
+    "ok": true,
+    "reply": "Oh dear, please don’t worry – let’s find a way to help. Should I call Karthik for you right now? He’ll know what to do, and we can make sure you get your medicine. Would you like me to help connect you?"
+  },
+  {
+    "scenario": "Confusion",
+    "status_code": 200,
+    "ok": true,
+    "reply": "Oh, my dear, I’m ElderMind, your caring companion. I’m here to help with anything you need, just like Karthik would want. Should we call him together now? Your health and happiness are our priority."
+  },
+  {
+    "scenario": "Celebration",
+    "status_code": 200,
+    "ok": true,
+    "reply": "That’s wonderful news, beta! Your grandson must be so proud – you must be beaming with joy! Would you like to share how the family is celebrating this achievement?"
+  },
+  {
+    "scenario": "Scam Risk",
+    "status_code": 200,
+    "ok": true,
+    "reply": "Oh my, that’s such exciting news! But beta, please be careful – we should verify this call with Karthik first. Sometimes these calls can be tricky. Let me help you contact him together, yes?"
+  },
+  {
+    "scenario": "Codemix",
+    "status_code": 200,
+    "ok": true,
+    "reply": "Amma, you’re doing just fine, beta. Your strength and wisdom brighten our lives so much! Let’s sit together and share chai – would you like me to prepare some?"
+  }
+]

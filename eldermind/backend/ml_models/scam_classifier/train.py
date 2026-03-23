@@ -27,7 +27,7 @@ TODO (Sudharsan Week 5):
 import os, sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../.."))
 
-import pandas as pd
+import pandas as pd # type: ignore
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
