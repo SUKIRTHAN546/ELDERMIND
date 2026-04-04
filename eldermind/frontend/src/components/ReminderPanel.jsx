@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { DEMO_USER_ID } from '../api';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
@@ -15,7 +16,7 @@ export default function ReminderPanel() {
 
   const fetchReminders = async () => {
     try {
-      const res = await axios.get(`${API_URL}/reminders/1`);
+      const res = await axios.get(`${API_URL}/reminders/${DEMO_USER_ID}`);
       setReminders(res.data);
     } catch {
       // backend not connected yet
@@ -36,7 +37,7 @@ export default function ReminderPanel() {
     setSuccess('');
     try {
       await axios.post(`${API_URL}/reminders/create`, {
-        user_id: 1,
+        user_id: DEMO_USER_ID,
         title,
         message,
         remind_at: remindAt,

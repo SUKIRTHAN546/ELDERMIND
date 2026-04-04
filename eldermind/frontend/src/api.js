@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+export const DEMO_USER_ID = 'demo_elderly_user';
 
 const api = axios.create({
   baseURL: API_URL,
@@ -10,14 +11,14 @@ const api = axios.create({
 });
 
 // Chat
-export const sendMessage = (message, user_id = 1) =>
+export const sendMessage = (message, user_id = DEMO_USER_ID) =>
   api.post('/chat', { message, user_id });
 
 // Reminders
 export const createReminder = (data) =>
   api.post('/reminders/create', data);
 
-export const getReminders = (user_id = 1) =>
+export const getReminders = (user_id = DEMO_USER_ID) =>
   api.get(`/reminders/${user_id}`);
 
 // Memory

@@ -160,8 +160,11 @@ app.include_router(voice_router)
 # app.include_router(chat_router)
 app.include_router(memory_router)
 # app.include_router(voice_router)
-# app.include_router(reminders_router)
+app.include_router(reminders_router)
 app.include_router(security_router)
+
+from routers.onboarding import router as onboarding_router
+app.include_router(onboarding_router)
 
 # ─── SCHEDULER (Shivani — Week 3) ────────────────────────────────
 from services.scheduler_service import start_scheduler
